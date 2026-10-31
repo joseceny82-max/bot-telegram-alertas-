@@ -51,3 +51,7 @@ autenticado o un cliente de confianza.
 ## Seguridad
 
 Configura un `API_TOKEN` largo y aleatorio como variable de entorno en Railway y en local. Sin él el bot no arranca. Limita `CORS_ORIGIN` al origen del panel y protege el acceso a ese panel. Mantén los tokens, identificadores y rutas reales fuera del repositorio. La limpieza de archivos actuales no elimina datos de commits anteriores.
+
+## Pendiente para un futuro panel web
+
+Actualmente solo se utiliza Telegram; no es necesario configurar `CORS_ORIGIN` para ese uso. Antes de incorporar un panel web, establece `CORS_ORIGIN` a su origen exacto, implementa acceso autenticado mediante un intermediario de confianza y evita exponer `API_TOKEN` en el navegador. El flujo de alertas requiere un cliente SSE que pueda enviar la cabecera `Authorization`; `EventSource` nativo no la admite. Comprueba la conexión y la autorización antes del despliegue.
