@@ -73,9 +73,9 @@ def test_bridge_on_message_filters_and_forwards():
         msg = lambda cid: NS(id=9, channel=NS(id=cid, name="compras"), author=NS(id=2, display_name="Monitor"),
                              content="Oferta", embeds=[], attachments=[], jump_url="https://discord.com/x",
                              created_at=__import__("datetime").datetime(2026, 10, 30))
-        bot.ROUTES = {1496923066205470911: ["-1"]}
-        await b.on_message(msg(123))                      # otro canal -> ignorado
-        await b.on_message(msg(1496923066205470911))       # canal vigilado -> reenviado
+        bot.ROUTES = {123: ["-1"]}
+        await b.on_message(msg(999))                      # otro canal -> ignorado
+        await b.on_message(msg(123))       # canal vigilado -> reenviado
     asyncio.run(run())
     assert len(sent) == 1 and "Oferta" in sent[0][0]
 
@@ -103,14 +103,14 @@ def test_get_chat_id_against_local_server(monkeypatch):
 
 
 def test_compra_completada_format():
-    embed = {"author": {"name": "✅ Compra completada · ATM - FCB"}, "title": "✅  Worker w4 — compra completada",
-             "description": "**2 entradas** compradas por **194.50€**. Pago confirmado.",
-             "fields": [{"name": "💰 Total", "value": "**194.50 €**"},
+    embed = {"author": {"name": "✅ Compra completada · EQUIPO A - EQUIPO B"}, "title": "✅  Worker w4 — compra completada",
+             "description": "**2 entradas** compradas por **123.45€**. Pago confirmado.",
+             "fields": [{"name": "💰 Total", "value": "**123.45 €**"},
                         {"name": "🔗 URL", "value": "[https://entradas.x/check…](https://entradas.x/checkout/success?a=1&b=2)"}],
              "footer": {"text": "RB Bot · tipo: worker_done · worker w4"}}
-    txt = bot.format_message("RB Bot", "ATM · compra-completada", "✅ **Compra completada** · ATM - FCB", [embed], "https://d/x")
+    txt = bot.format_message("RB Bot", "ATM · compra-completada", "✅ **Compra completada** · EQUIPO A - EQUIPO B", [embed], "https://d/x")
     assert txt.startswith("✅ <b>ATM · compra-completada</b>")
-    assert "**" not in txt and "<b>194.50 €</b>" in txt and "<b>2 entradas</b>" in txt
+    assert "**" not in txt and "<b>123.45 €</b>" in txt and "<b>2 entradas</b>" in txt
     assert '<a href="https://entradas.x/checkout/success?a=1&amp;b=2">https://entradas.x/check…</a>' in txt
     assert "<i>RB Bot · tipo: worker_done · worker w4</i>" in txt
     assert bot.md("a <b> & `c`") == "a &lt;b&gt; &amp; <code>c</code>"
@@ -122,26 +122,26 @@ def test_routes():
     assert bot.parse_routes("", "X", {9}) == {9: ["X"]}
 
 
-REAL_EMBED = {"author": {"name": "✅ Compra completada · ATLÉTICO DE MADRID - FC BARCELONA LALIGA"},
+EXAMPLE_EMBED = {"author": {"name": "✅ Compra completada · EQUIPO A - EQUIPO B"},
               "title": "✅  Worker w4 — compra completada",
-              "description": "**2 entradas** compradas por **194.50€**. Pago confirmado.",
-              "fields": [{"name": "⚽ Partido", "value": "ATLÉTICO DE MADRID - FC BARCELONA LALIGA"},
+              "description": "**2 entradas** compradas por **123.45€**. Pago confirmado.",
+              "fields": [{"name": "⚽ Partido", "value": "EQUIPO A - EQUIPO B"},
                          {"name": "🧩 Worker", "value": "w4"}, {"name": "🎫 Entradas", "value": "2"},
-                         {"name": "💰 Total", "value": "**194.50 €**"}, {"name": "📍 Sectores", "value": "S_417"},
-                         {"name": "🎟 Página del evento", "value": "[https://entradas.x/sel…](https://entradas.x/select/2976109)"},
+                         {"name": "💰 Total", "value": "**123.45 €**"}, {"name": "📍 Sectores", "value": "S_100"},
+                         {"name": "🎟 Página del evento", "value": "[https://entradas.x/sel…](https://entradas.x/select/123)"},
                          {"name": "🔗 URL", "value": "[https://entradas.x/chk…](https://entradas.x/checkout/success)"}],
               "footer": {"text": "RB Bot · tipo: worker_done · worker w4"}}
 
 
 def test_build_event_compra():
-    ev = bot.build_event("ATM", "compra-completada", 1496936889544998972, 99, "https://d/x", "2026-10-30T08:20:00+00:00",
-                         "RB Bot", "✅ **Compra completada** · ATM - FCB · 2 entradas · 194.50 €", [REAL_EMBED], None)
+    ev = bot.build_event("ATM", "compra-completada", 456, 99, "https://d/x", "2026-10-30T08:20:00+00:00",
+                         "RB Bot", "✅ **Compra completada** · EQUIPO A - EQUIPO B · 2 entradas · 123.45 €", [EXAMPLE_EMBED], None)
     assert ev["event"] == "compra_completada" and ev["section"] == "ATM"
-    assert ev["data"] == {"partido": "ATLÉTICO DE MADRID - FC BARCELONA LALIGA", "worker": "w4", "entradas": 2,
-                          "total": "194.50 €", "total_eur": 194.5, "sectores": "S_417",
-                          "evento_url": "https://entradas.x/select/2976109", "url": "https://entradas.x/checkout/success"}
-    assert ev["content"] == "✅ Compra completada · ATM - FCB · 2 entradas · 194.50 €"
-    assert ev["description"] == "2 entradas compradas por 194.50€. Pago confirmado."
+    assert ev["data"] == {"partido": "EQUIPO A - EQUIPO B", "worker": "w4", "entradas": 2,
+                          "total": "123.45 €", "total_eur": 123.45, "sectores": "S_100",
+                          "evento_url": "https://entradas.x/select/123", "url": "https://entradas.x/checkout/success"}
+    assert ev["content"] == "✅ Compra completada · EQUIPO A - EQUIPO B · 2 entradas · 123.45 €"
+    assert ev["description"] == "2 entradas compradas por 123.45€. Pago confirmado."
     assert bot.build_event("RM", "carrito", 1, 2, "u", "t", "a", "", [], None)["event"] == "carrito"
 
 
@@ -203,8 +203,8 @@ def test_api_auth_filters_and_stream():
             async with s.get(base + "/api/alerts", headers={"Authorization": "Bearer mal"}) as x: r["bad"] = x.status
             async with s.get(base + "/api/alerts?type=compra_completada", headers={"Authorization": "Bearer tok"}) as x:
                 r["filtered"] = (x.status, await x.json(), x.headers.get("Access-Control-Allow-Origin"))
-            async with s.get(base + "/api/alerts?token=tok&type=x") as x: r["badtype"] = x.status
-            async with s.get(base + "/api/alerts/stream?token=tok") as x:
+            async with s.get(base + "/api/alerts?type=x", headers={"Authorization": "Bearer tok"}) as x: r["badtype"] = x.status
+            async with s.get(base + "/api/alerts/stream", headers={"Authorization": "Bearer tok"}) as x:
                 await asyncio.sleep(0.1); st.add(_ev(9, ts="2026-10-30T14:00:00"))
                 line = b""
                 while b"data:" not in line:
@@ -222,15 +222,35 @@ def test_api_auth_filters_and_stream():
 
 
 def test_build_event_rm_carrito_seats():
-    embed = {"title": "🛒  REAL MADRID CF - RB LEIPZIG", "description": "Esperando tu aprobación en el panel.",
+    embed = {"title": "🛒  EQUIPO C - EQUIPO D", "description": "Esperando tu aprobación en el panel.",
              "fields": [{"name": "📍 Sector 421 · 2o Anf Fondo Norte",
                          "value": "🪑 Fila **4** · Asiento **8** — 193,45 €\n🪑 Fila **4** · Asiento **9** — 193,45 €"},
                         {"name": "💰 Total", "value": "**386,90 €** · 2 entradas"}, {"name": "🧩 Worker", "value": "w21"}]}
     ev = bot.build_event("RM", "carrito", 1, 2, "u", "t", "a",
-                         "🛒 **Carrito listo** · REAL MADRID CF - RB LEIPZIG · 2 entradas · 386,90 €", [embed], None)
+                         "🛒 **Carrito listo** · EQUIPO C - EQUIPO D · 2 entradas · 386,90 €", [embed], None)
     d = ev["data"]
-    assert d["partido"] == "REAL MADRID CF - RB LEIPZIG" and d["entradas"] == 2 and d["total_eur"] == 386.9
+    assert d["partido"] == "EQUIPO C - EQUIPO D" and d["entradas"] == 2 and d["total_eur"] == 386.9
     assert d["worker"] == "w21" and d["sectores"] == "421 · 2o Anf Fondo Norte"
     assert d["asientos"] == [{"sector": "421 · 2o Anf Fondo Norte", "fila": "4", "asiento": "8", "precio_eur": 193.45},
                              {"sector": "421 · 2o Anf Fondo Norte", "fila": "4", "asiento": "9", "precio_eur": 193.45}]
     assert bot.plain("a &amp; b") == "a & b"
+
+
+def test_api_requires_token_and_rejects_query_token():
+    import pytest
+    with pytest.raises(ValueError, match="API_TOKEN"):
+        bot.make_api(bot.Store(), "")
+
+    async def run():
+        runner = web.AppRunner(bot.make_api(bot.Store(), "fake-test-token"))
+        await runner.setup()
+        site = web.TCPSite(runner, "127.0.0.1", 0)
+        await site.start()
+        port = site._server.sockets[0].getsockname()[1]
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"http://127.0.0.1:{port}/api/alerts?token=fake-test-token") as response:
+                status = response.status
+        await runner.cleanup()
+        return status
+
+    assert asyncio.run(run()) == 401
