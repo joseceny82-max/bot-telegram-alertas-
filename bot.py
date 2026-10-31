@@ -22,7 +22,7 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "")
 TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TG_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
-CHANNEL_IDS = {int(c) for c in os.getenv("DISCORD_CHANNEL_IDS", "1496923066205470911").split(",") if c.strip()}
+CHANNEL_IDS = {int(c) for c in os.getenv("DISCORD_CHANNEL_IDS", "").split(",") if c.strip()}
 
 
 def parse_routes(raw: str, default_chat: str, channels: set[int]) -> dict[int, list[str]]:
@@ -42,7 +42,7 @@ WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
 
 API_TOKEN = os.getenv("API_TOKEN", "")
 API_PORT = int(os.getenv("PORT", os.getenv("API_PORT", "8080")))
-CORS_ORIGIN = os.getenv("CORS_ORIGIN", "*")
+CORS_ORIGIN = os.getenv("CORS_ORIGIN", "")
 BACKFILL = int(os.getenv("BACKFILL", "50"))
 
 ROUTES = parse_routes(os.getenv("ROUTES", ""), TG_CHAT_ID, CHANNEL_IDS)
@@ -207,10 +207,10 @@ class Webhook:
                         ok = 200 <= r.status < 300
                         if ok or r.status < 500:
                             if not ok:
-                                log.error("Webhook %s respondió %s", url, r.status)
+                                log.error("Webhook respondió %s", r.status)
                             break
-                except Exception as exc:  # red caída, timeout...
-                    log.warning("Webhook %s intento %s falló: %s", url, attempt + 1, exc)
+                except Exception:  # Las URL y excepciones pueden contener credenciales.
+                    log.warning("Webhook intento %s falló", attempt + 1)
                 await asyncio.sleep(2 ** attempt)
             results.append(ok)
         return results
@@ -248,16 +248,20 @@ class Store:
         return out[:max(1, min(limit, 500))]
 
 
-def make_api(store: Store, token: str = "", cors: str = "*", ping: float = 25) -> web.Application:
+def make_api(store: Store, token: str = "", cors: str = "", ping: float = 25) -> web.Application:
     """API HTTP para el panel: /health, /api/alerts, /api/alerts/stream (SSE)."""
+
+    if not token or not token.strip():
+        raise ValueError("API_TOKEN es obligatorio")
 
     @web.middleware
     async def mw(request, handler):
         if request.method == "OPTIONS":
             resp = web.Response()
         else:
-            if token and request.path.startswith("/api/"):
-                given = request.headers.get("Authorization", "").removeprefix("Bearer ").strip() or request.query.get("token", "")
+            if request.path.startswith("/api/"):
+                auth = request.headers.get("Authorization", "")
+                given = auth[7:].strip() if auth.startswith("Bearer ") else ""
                 if not hmac.compare_digest(given, token):
                     resp = web.json_response({"error": "unauthorized"}, status=401)
                     resp.headers["Access-Control-Allow-Origin"] = cors
@@ -416,7 +420,7 @@ class Bridge(discord.Client):
 
 
 def main():
-    missing = [k for k, v in {"DISCORD_TOKEN": DISCORD_TOKEN, "TELEGRAM_BOT_TOKEN": TG_TOKEN}.items() if not v]
+    missing = [k for k, v in {"DISCORD_TOKEN": DISCORD_TOKEN, "TELEGRAM_BOT_TOKEN": TG_TOKEN, "API_TOKEN": API_TOKEN.strip()}.items() if not v]
     if not os.getenv("ROUTES") and not TG_CHAT_ID:
         missing.append("TELEGRAM_CHAT_ID o ROUTES")
     if missing:
